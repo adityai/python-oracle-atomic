@@ -1,0 +1,47 @@
+import cx_Oracle
+
+class TRANSACT:
+    def __enter__(self):
+        self.__db = cx_Oracle.Connection("erma/erma@localhost:1521/XE")
+        self.__cursor = self.__db.cursor()
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.__db.close()
+
+    def execTransaction(self):
+        column_1 = "test1"
+        column_2 = "test2"
+
+        select_sql_table1 = """select column1 from table1"""
+        insert_sql_table1 = "insert into table1 values ('" + column_1 + "')"
+
+        select_sql_table2 = """select column1 from table2"""
+        insert_sql_table2 = "insert into table2 values ('" + column_2 + "')"
+
+        self.__db.begin()
+        self.__cursor.execute(insert_sql_table1)
+        self.__cursor.execute(insert_sql_table2)
+
+        self.__db.commit()
+
+    def raiseSalary(self, employee_ids, raise_pct):
+        update_sql = "update employees set salary=salary*:1 where employee_id=:2"
+
+        self.__db.begin()
+
+        for employee_id in employee_ids:
+            try:
+                self.__cursor.execute(update_sql, [1 + raise_pct / 100, employee_id])
+                assert self.__cursor.rowcount == 1
+            except AssertionError:
+                self.__db.rollback()
+                raise Warning, "invalid employee_id (%s)" % employee_id
+
+        self.__db.commit()
+
+
+if __name__ == "__main__":
+    with TRANSACT() as transact:
+        transact.execTransaction()
+
